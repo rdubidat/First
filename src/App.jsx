@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useTimer } from './hooks/useTimer';
 import { useTaskLog, useSettings } from './hooks/useTaskLog';
+import { useInstallPrompt } from './hooks/useInstallPrompt';
 import Timer from './components/Timer';
 import TaskInput from './components/TaskInput';
 import SessionLog from './components/SessionLog';
@@ -14,6 +15,7 @@ function App() {
 
   const { settings, updateSettings } = useSettings();
   const { todaySessions, isLoading, addSession, removeSession, stats } = useTaskLog();
+  const { canInstall, install } = useInstallPrompt();
 
   const durations = {
     focus: settings.focus * 60,
@@ -165,6 +167,24 @@ function App() {
           <Stats stats={stats} />
         )}
       </div>
+
+      {/* Install Banner */}
+      {canInstall && (
+        <div className="max-w-2xl mx-auto px-4 mt-6">
+          <div className="bg-gradient-to-r from-red-500 to-orange-500 rounded-xl p-4 flex items-center justify-between text-white shadow-lg">
+            <div>
+              <div className="font-semibold text-sm">Install FocusForge</div>
+              <div className="text-xs text-red-100">Add to your home screen for quick access</div>
+            </div>
+            <button
+              onClick={install}
+              className="px-4 py-2 bg-white text-red-600 text-sm font-semibold rounded-lg hover:bg-red-50 transition-colors"
+            >
+              Install
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="max-w-2xl mx-auto px-4 mt-8 text-center text-xs text-gray-300">
