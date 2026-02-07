@@ -1,132 +1,184 @@
-import { useState } from 'react';
-import { useHabits } from './hooks/useHabits';
-import Header from './components/Header';
-import HabitList from './components/HabitList';
-import AddHabitForm from './components/AddHabitForm';
-import WeeklyChart from './components/WeeklyChart';
+import { useState, useCallback } from 'react';
+import { useTimer } from './hooks/useTimer';
+import { useTaskLog, useSettings } from './hooks/useTaskLog';
+import Timer from './components/Timer';
+import TaskInput from './components/TaskInput';
+import SessionLog from './components/SessionLog';
+import Stats from './components/Stats';
+import Settings from './components/Settings';
 
 function App() {
-  const {
-    todayTasks,
-    completionHistory,
-    isLoading,
-    toggleTask,
-    addHabit,
-    removeHabit,
-    resetToDefaults,
-    stats
-  } = useHabits();
+  const [currentTask, setCurrentTask] = useState('');
+  const [activeTab, setActiveTab] = useState('timer');
+  const [showSettings, setShowSettings] = useState(false);
 
-  const [activeTab, setActiveTab] = useState('today');
+  const { settings, updateSettings } = useSettings();
+  const { todaySessions, isLoading, addSession, removeSession, stats } = useTaskLog();
+
+  const durations = {
+    focus: settings.focus * 60,
+    shortBreak: settings.shortBreak * 60,
+    longBreak: settings.longBreak * 60,
+  };
+
+  const handleSessionComplete = useCallback((durationSeconds) => {
+    addSession(currentTask || 'Focus Session', durationSeconds);
+  }, [addSession, currentTask]);
+
+  const {
+    mode,
+    timeLeft,
+    isRunning,
+    progress,
+    pomodoroCount,
+    start,
+    pause,
+    reset,
+    skip,
+    switchMode,
+    updateDurations,
+    TIMER_MODES,
+  } = useTimer({ onSessionComplete: handleSessionComplete, durations });
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500">Loading...</div>
+        <div className="text-gray-400">Loading...</div>
       </div>
     );
   }
 
+  const goalProgress = stats.todaySessionCount / settings.dailyGoal;
+
   return (
     <div className="min-h-screen bg-gray-50 pb-8">
-      <Header stats={stats} />
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md">
+              F
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-gray-800 leading-tight">FocusForge</h1>
+              <p className="text-xs text-gray-400">Pomodoro for Entrepreneurs</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Daily Goal Progress */}
+            <div className="hidden sm:flex items-center gap-2 bg-gray-50 rounded-full px-3 py-1.5">
+              <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-red-500 to-orange-500 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(goalProgress * 100, 100)}%` }}
+                />
+              </div>
+              <span className="text-xs text-gray-500 font-medium">
+                {stats.todaySessionCount}/{settings.dailyGoal}
+              </span>
+            </div>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-all"
+              title="Settings"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </header>
 
-      <div className="max-w-2xl mx-auto px-4 -mt-4">
+      <div className="max-w-2xl mx-auto px-4 mt-6">
         {/* Tab Navigation */}
         <div className="bg-white rounded-xl shadow-sm p-1 flex mb-6">
           <button
-            onClick={() => setActiveTab('today')}
-            className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${
-              activeTab === 'today'
-                ? 'bg-indigo-100 text-indigo-700'
+            onClick={() => setActiveTab('timer')}
+            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'timer'
+                ? 'bg-red-50 text-red-600'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            Today's Tasks
+            Timer
           </button>
           <button
-            onClick={() => setActiveTab('progress')}
-            className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${
-              activeTab === 'progress'
-                ? 'bg-indigo-100 text-indigo-700'
+            onClick={() => setActiveTab('sessions')}
+            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'sessions'
+                ? 'bg-red-50 text-red-600'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            Progress
+            Sessions
+            {stats.todaySessionCount > 0 && (
+              <span className="ml-1.5 bg-red-100 text-red-600 text-xs px-1.5 py-0.5 rounded-full">
+                {stats.todaySessionCount}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('stats')}
+            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'stats'
+                ? 'bg-red-50 text-red-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Stats
           </button>
         </div>
 
-        {activeTab === 'today' ? (
-          <div className="space-y-6">
-            <HabitList
-              tasks={todayTasks}
-              onToggle={toggleTask}
-              onRemove={removeHabit}
+        {/* Tab Content */}
+        {activeTab === 'timer' && (
+          <div className="space-y-6 flex flex-col items-center">
+            <Timer
+              mode={mode}
+              timeLeft={timeLeft}
+              isRunning={isRunning}
+              progress={progress}
+              pomodoroCount={pomodoroCount}
+              onStart={start}
+              onPause={pause}
+              onReset={reset}
+              onSkip={skip}
+              onSwitchMode={switchMode}
+              TIMER_MODES={TIMER_MODES}
             />
-            <AddHabitForm onAdd={addHabit} onReset={resetToDefaults} />
+            <TaskInput
+              currentTask={currentTask}
+              onTaskChange={setCurrentTask}
+            />
           </div>
-        ) : (
-          <div className="space-y-6">
-            <WeeklyChart completionHistory={completionHistory} />
+        )}
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white rounded-xl p-5 shadow-sm">
-                <div className="text-3xl font-bold text-indigo-600">{stats.currentStreak}</div>
-                <div className="text-sm text-gray-500">Current Streak</div>
-                <div className="text-xs text-gray-400 mt-1">days in a row</div>
-              </div>
-              <div className="bg-white rounded-xl p-5 shadow-sm">
-                <div className="text-3xl font-bold text-purple-600">{stats.longestStreak}</div>
-                <div className="text-sm text-gray-500">Best Streak</div>
-                <div className="text-xs text-gray-400 mt-1">personal record</div>
-              </div>
-            </div>
+        {activeTab === 'sessions' && (
+          <SessionLog
+            sessions={todaySessions}
+            onRemove={removeSession}
+          />
+        )}
 
-            {/* Motivation Section */}
-            <div className="bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl p-6 text-white">
-              <h3 className="font-semibold mb-2">Keep Going!</h3>
-              <p className="text-sm text-indigo-100">
-                {stats.currentStreak === 0
-                  ? "Start your streak today! Complete all your marketing tasks to begin building momentum."
-                  : stats.currentStreak < 7
-                  ? `You're ${7 - stats.currentStreak} days away from your first week streak!`
-                  : stats.currentStreak < 30
-                  ? `Amazing! You're ${30 - stats.currentStreak} days away from a month-long streak!`
-                  : "Incredible dedication! You've built a strong marketing habit. Keep it up!"}
-              </p>
-            </div>
-
-            {/* Tips Section */}
-            <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h3 className="font-semibold text-gray-800 mb-3">Marketing Tips</h3>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li className="flex items-start gap-2">
-                  <span className="text-indigo-500">•</span>
-                  <span>Batch your content creation to save time</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-indigo-500">•</span>
-                  <span>Engage authentically - quality over quantity</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-indigo-500">•</span>
-                  <span>Schedule your marketing time like a client meeting</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-indigo-500">•</span>
-                  <span>Repurpose content across different platforms</span>
-                </li>
-              </ul>
-            </div>
-          </div>
+        {activeTab === 'stats' && (
+          <Stats stats={stats} />
         )}
       </div>
 
       {/* Footer */}
-      <div className="max-w-2xl mx-auto px-4 mt-8 text-center text-sm text-gray-400">
-        Marketing Habit Tracker for Business Coaches
+      <div className="max-w-2xl mx-auto px-4 mt-8 text-center text-xs text-gray-300">
+        FocusForge - Built for entrepreneurs who ship.
       </div>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <Settings
+          settings={settings}
+          onSave={(newSettings) => { updateSettings(newSettings); updateDurations(); }}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
     </div>
   );
 }
