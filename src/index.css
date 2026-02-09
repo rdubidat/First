@@ -7,3 +7,44 @@ body {
   min-height: 100vh;
   background-color: #f8fafc;
 }
+
+/* Seamless GHL iframe embedding */
+.ghl-embedded {
+  min-height: 100vh;
+}
+
+.ghl-embedded body {
+  overflow: auto;
+}
+
+/* Smooth scrollbar for embedded panels */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Pulse animation for no-show alert cards */
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}
