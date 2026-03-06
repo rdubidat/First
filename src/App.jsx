@@ -243,12 +243,12 @@ function App() {
   const attendanceRate = activeMembers.length === 0 ? 0 : Math.min(100, Math.round((todaysCheckIns / activeMembers.length) * 100));
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
+    <div className="min-h-screen bg-[#070b14] text-slate-100">
       <div className="mx-auto max-w-6xl px-4 py-8">
-        <header className="mb-6 rounded-2xl bg-gradient-to-r from-indigo-700 to-violet-600 p-6 text-white shadow-lg">
-          <p className="text-sm font-semibold uppercase tracking-wider text-indigo-100">GrowthPilot</p>
+        <header className="mb-6 rounded-2xl bg-gradient-to-r from-fuchsia-600 via-cyan-500 to-lime-400 p-6 text-white shadow-lg">
+          <p className="text-sm font-semibold uppercase tracking-wider text-slate-900/80">GrowthPilot</p>
           <h1 className="mt-2 text-3xl font-bold">Martial Arts Member Operations Hub</h1>
-          <p className="mt-2 max-w-3xl text-sm text-indigo-100">
+          <p className="mt-2 max-w-3xl text-sm text-slate-900/80">
             Attendance tracking, multi-art grade profiles, and GoHighLevel-ready automation events.
           </p>
         </header>
@@ -266,7 +266,7 @@ function App() {
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`rounded-full px-4 py-2 text-sm font-semibold capitalize transition ${
-                activeTab === tab ? 'bg-slate-900 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-200'
+                activeTab === tab ? 'bg-cyan-400 text-slate-900 shadow-[0_0_18px_rgba(34,211,238,0.55)]' : 'bg-[#0f172a] text-cyan-200 hover:bg-cyan-500/20 border border-cyan-500/30'
               }`}
             >
               {tab}
@@ -276,11 +276,11 @@ function App() {
 
         {activeTab === 'attendance' && (
           <section className="grid gap-5 lg:grid-cols-3">
-            <div className="space-y-4 rounded-2xl bg-white p-5 shadow-sm lg:col-span-1">
+            <div className="space-y-4 rounded-2xl bg-[#0f172a] border border-cyan-500/35 p-5 shadow-[0_0_24px_rgba(34,211,238,0.12)] lg:col-span-1">
               <h2 className="text-lg font-bold">Class Session Selector</h2>
               <label className="block text-sm font-medium text-slate-600">Date</label>
               <input
-                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                className="w-full rounded-lg border border-cyan-500/40 bg-[#020617] text-cyan-100 px-3 py-2"
                 type="date"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
@@ -288,7 +288,7 @@ function App() {
 
               <label className="mt-3 block text-sm font-medium text-slate-600">Class</label>
               <select
-                className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                className="w-full rounded-lg border border-cyan-500/40 bg-[#020617] text-cyan-100 px-3 py-2"
                 value={effectiveClassId}
                 onChange={(e) => setSelectedClassId(e.target.value)}
               >
@@ -297,36 +297,36 @@ function App() {
                 ))}
               </select>
 
-              <p className="rounded-lg bg-slate-100 p-3 text-xs text-slate-600">
+              <p className="rounded-lg bg-cyan-500/10 border border-cyan-400/30 p-3 text-xs text-cyan-100">
                 Pick a class, then mark members present or absent. Every mark updates tags and creates an automation payload.
               </p>
             </div>
 
-            <div className="rounded-2xl bg-white p-5 shadow-sm lg:col-span-2">
+            <div className="rounded-2xl bg-[#0f172a] border border-cyan-500/35 p-5 shadow-[0_0_24px_rgba(34,211,238,0.12)] lg:col-span-2">
               <h2 className="text-lg font-bold">Attendance Register</h2>
-              <p className="mb-4 text-sm text-slate-500">
+              <p className="mb-4 text-sm text-cyan-200/80">
                 Eligible members for <strong>{selectedClass?.art ?? 'selected class'}</strong>.
               </p>
 
               <div className="space-y-2">
                 {eligibleMembers.length === 0 && (
-                  <p className="text-sm text-slate-500">No active members currently assigned to this art.</p>
+                  <p className="text-sm text-cyan-200/80">No active members currently assigned to this art.</p>
                 )}
 
                 {eligibleMembers.map((member) => {
                   const marked = attendanceForSlot[member.id];
                   return (
-                    <div key={member.id} className="flex items-center justify-between rounded-xl border border-slate-200 p-3">
+                    <div key={member.id} className="flex items-center justify-between rounded-xl border border-cyan-500/30 bg-[#020617] p-3">
                       <div>
                         <p className="font-semibold">{member.name}</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-cyan-200/80">
                           {member.arts.map((entry) => `${entry.art}: ${entry.grade}`).join(' • ') || 'No grade yet'}
                         </p>
                       </div>
                       <div className="flex gap-2">
                         <button
                           className={`rounded-md px-3 py-1 text-sm font-semibold ${
-                            marked?.present ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
+                            marked?.present ? 'bg-emerald-600 text-white' : 'bg-[#111827] text-cyan-200 border border-cyan-500/35'
                           }`}
                           onClick={() => markAttendance(member.id, true)}
                         >
@@ -334,7 +334,7 @@ function App() {
                         </button>
                         <button
                           className={`rounded-md px-3 py-1 text-sm font-semibold ${
-                            marked && !marked.present ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-600'
+                            marked && !marked.present ? 'bg-rose-600 text-white' : 'bg-[#111827] text-cyan-200 border border-cyan-500/35'
                           }`}
                           onClick={() => markAttendance(member.id, false)}
                         >
@@ -351,39 +351,39 @@ function App() {
 
         {activeTab === 'members' && (
           <section className="grid gap-5 lg:grid-cols-3">
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
+            <div className="rounded-2xl bg-[#0f172a] border border-cyan-500/35 p-5 shadow-[0_0_24px_rgba(34,211,238,0.12)]">
               <h2 className="text-lg font-bold">Add Member</h2>
               <input
-                className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2"
+                className="mt-3 w-full rounded-lg border border-cyan-500/40 bg-[#020617] text-cyan-100 px-3 py-2"
                 placeholder="Student full name"
                 value={newMemberName}
                 onChange={(e) => setNewMemberName(e.target.value)}
               />
-              <button className="mt-3 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white" onClick={addMember}>
+              <button className="mt-3 rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-[0_0_18px_rgba(34,211,238,0.45)]" onClick={addMember}>
                 Create Member
               </button>
 
-              <h3 className="mt-6 text-sm font-semibold uppercase tracking-wide text-slate-500">Add Class Template</h3>
+              <h3 className="mt-6 text-sm font-semibold uppercase tracking-wide text-cyan-200/80">Add Class Template</h3>
               <div className="mt-2 space-y-2">
                 <input
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                  className="w-full rounded-lg border border-cyan-500/40 bg-[#020617] text-cyan-100 px-3 py-2"
                   placeholder="Class title"
                   value={newClass.title}
                   onChange={(e) => setNewClass((prev) => ({ ...prev, title: e.target.value }))}
                 />
                 <input
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                  className="w-full rounded-lg border border-cyan-500/40 bg-[#020617] text-cyan-100 px-3 py-2"
                   placeholder="Art (e.g., Muay Thai)"
                   value={newClass.art}
                   onChange={(e) => setNewClass((prev) => ({ ...prev, art: e.target.value }))}
                 />
                 <input
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2"
+                  className="w-full rounded-lg border border-cyan-500/40 bg-[#020617] text-cyan-100 px-3 py-2"
                   type="time"
                   value={newClass.startTime}
                   onChange={(e) => setNewClass((prev) => ({ ...prev, startTime: e.target.value }))}
                 />
-                <button className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white" onClick={addClassTemplate}>
+                <button className="w-full rounded-lg bg-fuchsia-500 px-4 py-2 text-sm font-semibold text-white shadow-[0_0_18px_rgba(217,70,239,0.45)]" onClick={addClassTemplate}>
                   Save Template
                 </button>
               </div>
@@ -394,17 +394,17 @@ function App() {
                 const draft = artDrafts[member.id] ?? { art: '', grade: '' };
 
                 return (
-                  <article key={member.id} className="rounded-2xl bg-white p-5 shadow-sm">
+                  <article key={member.id} className="rounded-2xl bg-[#0f172a] border border-cyan-500/35 p-5 shadow-[0_0_24px_rgba(34,211,238,0.12)]">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <h2 className="text-lg font-bold">{member.name}</h2>
-                      <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
+                      <span className="rounded-full bg-emerald-400/15 border border-emerald-400/40 px-3 py-1 text-xs font-semibold text-emerald-300">
                         {member.status}
                       </span>
                     </div>
-                    <p className="mt-2 text-sm text-slate-500">Joined: {member.joinedAt}</p>
+                    <p className="mt-2 text-sm text-cyan-200/80">Joined: {member.joinedAt}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {member.tags.map((tag) => (
-                        <span key={tag} className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
+                        <span key={tag} className="rounded-full bg-cyan-500/10 border border-cyan-400/35 px-2 py-1 text-xs text-cyan-100">
                           {tag}
                         </span>
                       ))}
@@ -412,7 +412,7 @@ function App() {
                     <div className="mt-4 rounded-lg border border-slate-200 p-3">
                       <p className="mb-2 text-sm font-semibold">Art + Grade Profile</p>
                       {member.arts.length === 0 ? (
-                        <p className="text-xs text-slate-500">No art assignments yet.</p>
+                        <p className="text-xs text-cyan-200/80">No art assignments yet.</p>
                       ) : (
                         member.arts.map((entry) => (
                           <p key={`${member.id}-${entry.art}-${entry.grade}`} className="text-sm text-slate-600">
@@ -424,19 +424,19 @@ function App() {
 
                       <div className="mt-3 grid gap-2 sm:grid-cols-3">
                         <input
-                          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                          className="rounded-lg border border-cyan-500/40 bg-[#020617] text-cyan-100 px-3 py-2 text-sm"
                           placeholder="Art"
                           value={draft.art}
                           onChange={(e) => setArtDrafts((prev) => ({ ...prev, [member.id]: { ...draft, art: e.target.value } }))}
                         />
                         <input
-                          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                          className="rounded-lg border border-cyan-500/40 bg-[#020617] text-cyan-100 px-3 py-2 text-sm"
                           placeholder="Grade"
                           value={draft.grade}
                           onChange={(e) => setArtDrafts((prev) => ({ ...prev, [member.id]: { ...draft, grade: e.target.value } }))}
                         />
                         <button
-                          className="rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white"
+                          className="rounded-lg bg-lime-400 px-3 py-2 text-xs font-semibold text-slate-900 shadow-[0_0_16px_rgba(163,230,53,0.45)]"
                           onClick={() => addArtToMember(member.id)}
                         >
                           Add Grade
@@ -451,28 +451,28 @@ function App() {
         )}
 
         {activeTab === 'automations' && (
-          <section className="rounded-2xl bg-white p-5 shadow-sm">
+          <section className="rounded-2xl bg-[#0f172a] border border-cyan-500/35 p-5 shadow-[0_0_24px_rgba(34,211,238,0.12)]">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-lg font-bold">Automation Queue Preview</h2>
-              <button className="rounded-lg bg-slate-200 px-3 py-1 text-xs font-semibold text-slate-700" onClick={clearAutomationQueue}>
+              <button className="rounded-lg bg-fuchsia-500/20 border border-fuchsia-400/40 px-3 py-1 text-xs font-semibold text-fuchsia-100" onClick={clearAutomationQueue}>
                 Clear Queue
               </button>
             </div>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-cyan-200/80">
               Use each payload in webhook-based automations to update contacts and trigger workflows in GoHighLevel.
             </p>
             <div className="mt-4 space-y-3">
-              {data.automations.length === 0 && <p className="text-sm text-slate-500">No automation events yet.</p>}
+              {data.automations.length === 0 && <p className="text-sm text-cyan-200/80">No automation events yet.</p>}
               {data.automations.map((event) => (
-                <div key={event.id} className="rounded-xl border border-slate-200 p-4">
+                <div key={event.id} className="rounded-xl border border-cyan-500/30 bg-[#020617] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="font-semibold">{event.memberName}</p>
-                    <p className="text-xs text-slate-500">{new Date(event.createdAt).toLocaleString()}</p>
+                    <p className="text-xs text-cyan-200/80">{new Date(event.createdAt).toLocaleString()}</p>
                   </div>
                   <p className="text-sm text-slate-600">
                     Trigger: <span className="font-medium">{event.trigger}</span>
                   </p>
-                  <pre className="mt-2 overflow-x-auto rounded-lg bg-slate-900 p-3 text-xs text-slate-100">
+                  <pre className="mt-2 overflow-x-auto rounded-lg bg-[#030712] border border-cyan-500/30 p-3 text-xs text-cyan-100">
                     {JSON.stringify(event.payload, null, 2)}
                   </pre>
                 </div>
@@ -487,8 +487,8 @@ function App() {
 
 function StatCard({ label, value, accent }) {
   return (
-    <div className="rounded-2xl bg-white p-4 shadow-sm">
-      <p className="text-sm text-slate-500">{label}</p>
+    <div className="rounded-2xl bg-[#0f172a] border border-cyan-500/40 p-4 shadow-[0_0_24px_rgba(34,211,238,0.15)]">
+      <p className="text-sm text-cyan-200/80">{label}</p>
       <p className={`mt-1 text-2xl font-bold ${accent}`}>{value}</p>
     </div>
   );
