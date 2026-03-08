@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { useHabits } from './hooks/useHabits';
+import { useWeeklySchedule } from './hooks/useWeeklySchedule';
 import Header from './components/Header';
 import HabitList from './components/HabitList';
 import AddHabitForm from './components/AddHabitForm';
 import WeeklyChart from './components/WeeklyChart';
+import WeeklySchedule from './components/WeeklySchedule';
 
 function App() {
   const {
+    habits,
     todayTasks,
     completionHistory,
     isLoading,
@@ -16,6 +19,8 @@ function App() {
     resetToDefaults,
     stats
   } = useHabits();
+
+  const weeklySchedule = useWeeklySchedule(habits);
 
   const [activeTab, setActiveTab] = useState('today');
 
@@ -45,6 +50,16 @@ function App() {
             Today's Tasks
           </button>
           <button
+            onClick={() => setActiveTab('plan')}
+            className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${
+              activeTab === 'plan'
+                ? 'bg-indigo-100 text-indigo-700'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Plan Week
+          </button>
+          <button
             onClick={() => setActiveTab('progress')}
             className={`flex-1 py-2 px-4 rounded-lg font-medium transition-all ${
               activeTab === 'progress'
@@ -56,7 +71,9 @@ function App() {
           </button>
         </div>
 
-        {activeTab === 'today' ? (
+        {activeTab === 'plan' ? (
+          <WeeklySchedule {...weeklySchedule} />
+        ) : activeTab === 'today' ? (
           <div className="space-y-6">
             <HabitList
               tasks={todayTasks}
