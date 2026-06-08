@@ -1,206 +1,208 @@
-import { useState, useCallback } from 'react';
-import { useTimer } from './hooks/useTimer';
-import { useTaskLog, useSettings } from './hooks/useTaskLog';
-import { useInstallPrompt } from './hooks/useInstallPrompt';
-import Timer from './components/Timer';
-import TaskInput from './components/TaskInput';
-import SessionLog from './components/SessionLog';
-import Stats from './components/Stats';
-import Settings from './components/Settings';
+import { useEffect, useRef, useState } from 'react'
+import { useTheme } from './hooks/useTheme'
+import { useTasks } from './hooks/useTasks'
+import { usePomodoro } from './hooks/usePomodoro'
+import { useSound } from './hooks/useSound'
+import { isElectron, load, save } from './state/storage'
+import TitleBar from './components/TitleBar'
+import AddTask from './components/AddTask'
+import TaskList from './components/TaskList'
+import Archive from './components/Archive'
+import Pomodoro from './components/Pomodoro'
+import CompactBubble from './components/CompactBubble'
+import Confetti from './components/Confetti'
+import { Paw, Bone, Check } from './components/icons'
 
-function App() {
-  const [currentTask, setCurrentTask] = useState('');
-  const [activeTab, setActiveTab] = useState('timer');
-  const [showSettings, setShowSettings] = useState(false);
+const TABS = [
+  { key: 'tasks', label: 'Tasks', Icon: Paw },
+  { key: 'pomodoro', label: 'Pomodoro', Icon: Check },
+  { key: 'doghouse', label: 'Doghouse', Icon: Bone },
+]
 
-  const { settings, updateSettings } = useSettings();
-  const { todaySessions, isLoading, addSession, removeSession, stats } = useTaskLog();
-  const { canInstall, install } = useInstallPrompt();
-
-  const durations = {
-    focus: settings.focus * 60,
-    shortBreak: settings.shortBreak * 60,
-    longBreak: settings.longBreak * 60,
-  };
-
-  const handleSessionComplete = useCallback((durationSeconds) => {
-    addSession(currentTask || 'Focus Session', durationSeconds);
-  }, [addSession, currentTask]);
-
+export default function App() {
+  const { isDark, toggle: toggleTheme } = useTheme()
   const {
-    mode,
-    timeLeft,
-    isRunning,
-    progress,
-    pomodoroCount,
-    start,
-    pause,
-    reset,
-    skip,
-    switchMode,
-    updateDurations,
-    TIMER_MODES,
-  } = useTimer({ onSessionComplete: handleSessionComplete, durations });
+    tasks,
+    archive,
+    add,
+    remove,
+    complete,
+    retrieve,
+    removeArchived,
+    clearArchive,
+    stats,
+  } = useTasks()
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-400">Loading...</div>
-      </div>
-    );
+  const [tab, setTab] = useState('tasks')
+  const [pinned, setPinned] = useState(true)
+  const [compact, setCompact] = useState(false)
+  const [cheer, setCheer] = useState(0)
+
+  // sound on/off, persisted; passed to useSound via a ref so callbacks stay stable
+  const [soundOn, setSoundOn] = useState(() => load('sound', true))
+  const soundRef = useRef(soundOn)
+  useEffect(() => {
+    soundRef.current = soundOn
+    save('sound', soundOn)
+  }, [soundOn])
+  const sfx = useSound(soundRef)
+
+  const pomo = usePomodoro(({ finished }) => {
+    sfx.chime()
+    if (finished === 'focus') setCheer((c) => c + 1)
+  })
+
+  // sync pinned state from the Electron main process on launch
+  useEffect(() => {
+    if (isElectron && window.gnt.getAlwaysOnTop) {
+      window.gnt.getAlwaysOnTop().then((v) => setPinned(!!v))
+    }
+  }, [])
+
+  const handleAdd = (text) => {
+    add(text)
+    sfx.add()
   }
 
-  const goalProgress = stats.todaySessionCount / settings.dailyGoal;
+  const celebrate = () => {
+    sfx.complete()
+    setCheer((c) => c + 1)
+  }
 
+  const togglePin = async () => {
+    if (!isElectron) return
+    const v = await window.gnt.toggleAlwaysOnTop()
+    setPinned(!!v)
+  }
+
+  const toggleCompact = async () => {
+    if (!isElectron) return
+    const v = await window.gnt.toggleCompact()
+    setCompact(!!v)
+  }
+
+  const switchTab = (key) => {
+    setTab(key)
+    sfx.click()
+  }
+
+  // ---- compact floating bubble -------------------------------------------
+  if (compact) {
+    const mood = pomo.mode === 'focus' ? 'focus' : 'sleep'
+    return (
+      <CompactBubble
+        activeCount={stats.active}
+        running={pomo.running}
+        secondsLeft={pomo.secondsLeft}
+        mood={mood}
+        onExpand={toggleCompact}
+      />
+    )
+  }
+
+  // ---- full window --------------------------------------------------------
   return (
-    <div className="min-h-screen bg-gray-50 pb-8">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md">
-              F
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-gray-800 leading-tight">FocusForge</h1>
-              <p className="text-xs text-gray-400">Pomodoro for Entrepreneurs</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {/* Daily Goal Progress */}
-            <div className="hidden sm:flex items-center gap-2 bg-gray-50 rounded-full px-3 py-1.5">
-              <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-red-500 to-orange-500 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(goalProgress * 100, 100)}%` }}
-                />
-              </div>
-              <span className="text-xs text-gray-500 font-medium">
-                {stats.todaySessionCount}/{settings.dailyGoal}
-              </span>
-            </div>
-            <button
-              onClick={() => setShowSettings(true)}
-              className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-all"
-              title="Settings"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-2xl mx-auto px-4 mt-6">
-        {/* Tab Navigation */}
-        <div className="bg-white rounded-xl shadow-sm p-1 flex mb-6">
-          <button
-            onClick={() => setActiveTab('timer')}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'timer'
-                ? 'bg-red-50 text-red-600'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Timer
-          </button>
-          <button
-            onClick={() => setActiveTab('sessions')}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'sessions'
-                ? 'bg-red-50 text-red-600'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Sessions
-            {stats.todaySessionCount > 0 && (
-              <span className="ml-1.5 bg-red-100 text-red-600 text-xs px-1.5 py-0.5 rounded-full">
-                {stats.todaySessionCount}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('stats')}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
-              activeTab === 'stats'
-                ? 'bg-red-50 text-red-600'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Stats
-          </button>
-        </div>
-
-        {/* Tab Content */}
-        {activeTab === 'timer' && (
-          <div className="space-y-6 flex flex-col items-center">
-            <Timer
-              mode={mode}
-              timeLeft={timeLeft}
-              isRunning={isRunning}
-              progress={progress}
-              pomodoroCount={pomodoroCount}
-              onStart={start}
-              onPause={pause}
-              onReset={reset}
-              onSkip={skip}
-              onSwitchMode={switchMode}
-              TIMER_MODES={TIMER_MODES}
-            />
-            <TaskInput
-              currentTask={currentTask}
-              onTaskChange={setCurrentTask}
-            />
-          </div>
-        )}
-
-        {activeTab === 'sessions' && (
-          <SessionLog
-            sessions={todaySessions}
-            onRemove={removeSession}
-          />
-        )}
-
-        {activeTab === 'stats' && (
-          <Stats stats={stats} />
-        )}
-      </div>
-
-      {/* Install Banner */}
-      {canInstall && (
-        <div className="max-w-2xl mx-auto px-4 mt-6">
-          <div className="bg-gradient-to-r from-red-500 to-orange-500 rounded-xl p-4 flex items-center justify-between text-white shadow-lg">
-            <div>
-              <div className="font-semibold text-sm">Install FocusForge</div>
-              <div className="text-xs text-red-100">Add to your home screen for quick access</div>
-            </div>
-            <button
-              onClick={install}
-              className="px-4 py-2 bg-white text-red-600 text-sm font-semibold rounded-lg hover:bg-red-50 transition-colors"
-            >
-              Install
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Footer */}
-      <div className="max-w-2xl mx-auto px-4 mt-8 text-center text-xs text-gray-300">
-        FocusForge - Built for entrepreneurs who ship.
-      </div>
-
-      {/* Settings Modal */}
-      {showSettings && (
-        <Settings
-          settings={settings}
-          onSave={(newSettings) => { updateSettings(newSettings); updateDurations(); }}
-          onClose={() => setShowSettings(false)}
+    <div
+      className={
+        isElectron
+          ? 'h-full w-full p-2.5'
+          : 'web-backdrop flex h-full w-full items-center justify-center p-4'
+      }
+    >
+      <div
+        className={[
+          'relative flex flex-col overflow-hidden rounded-[26px] border shadow-float',
+          'border-white/60 bg-gradient-to-b from-leon-50 to-leon-100',
+          'dark:border-bark-700/60 dark:from-bark-900 dark:to-bark-950',
+          isElectron ? 'h-full w-full' : 'h-[600px] w-[380px]',
+        ].join(' ')}
+      >
+        <TitleBar
+          streak={stats.completedToday}
+          pinned={pinned}
+          onTogglePin={togglePin}
+          isDark={isDark}
+          onToggleTheme={toggleTheme}
+          soundOn={soundOn}
+          onToggleSound={() => setSoundOn((s) => !s)}
+          onCompact={toggleCompact}
         />
-      )}
-    </div>
-  );
-}
 
-export default App;
+        {/* tabs */}
+        <nav className="no-drag flex gap-1 px-3 pb-2">
+          {TABS.map(({ key, label, Icon }) => {
+            const count =
+              key === 'tasks'
+                ? stats.active
+                : key === 'doghouse'
+                  ? stats.archived
+                  : 0
+            const active = tab === key
+            return (
+              <button
+                key={key}
+                onClick={() => switchTab(key)}
+                className={[
+                  'flex flex-1 items-center justify-center gap-1.5 rounded-xl py-1.5 text-xs font-bold transition',
+                  active
+                    ? 'bg-leon-500 text-white shadow'
+                    : 'text-bark-500 hover:bg-leon-500/10 hover:text-leon-600 dark:text-bark-300 dark:hover:text-leon-300',
+                ].join(' ')}
+              >
+                {Icon ? <Icon size={14} /> : null}
+                {label}
+                {count > 0 && (
+                  <span
+                    className={[
+                      'grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px]',
+                      active ? 'bg-white/30 text-white' : 'bg-leon-500/20 text-leon-600 dark:text-leon-300',
+                    ].join(' ')}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </nav>
+
+        {/* content */}
+        <main className="flex flex-1 flex-col overflow-y-auto pb-3">
+          {tab === 'tasks' && (
+            <div className="flex flex-1 flex-col gap-2">
+              <AddTask onAdd={handleAdd} />
+              <TaskList
+                tasks={tasks}
+                onComplete={complete}
+                onRemove={remove}
+                onCelebrate={celebrate}
+              />
+            </div>
+          )}
+          {tab === 'pomodoro' && <Pomodoro pomo={pomo} />}
+          {tab === 'doghouse' && (
+            <Archive
+              archive={archive}
+              onRetrieve={(id) => {
+                retrieve(id)
+                sfx.retrieve()
+              }}
+              onRemove={removeArchived}
+              onClear={clearArchive}
+            />
+          )}
+        </main>
+
+        {/* celebration confetti overlay */}
+        {cheer > 0 && (
+          <div
+            key={cheer}
+            className="pointer-events-none absolute left-1/2 top-24 -translate-x-1/2"
+          >
+            <Confetti count={22} />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

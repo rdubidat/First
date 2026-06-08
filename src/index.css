@@ -2,64 +2,71 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
+:root {
+  color-scheme: light dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
   margin: 0;
-  min-height: 100vh;
-  background-color: #f8fafc;
+}
+
+body {
+  /* Transparent so the rounded floating card + its shadow show through the
+     frameless Electron window. In the browser preview we paint a soft
+     backdrop instead (see .web-backdrop). */
+  background: transparent;
+  font-family: theme('fontFamily.sans');
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+  user-select: none;
 }
 
-/* Smooth timer transitions */
-circle {
-  transition: stroke-dashoffset 1s linear;
+/* Browser-only backdrop so the app doesn't float on a blank white page. */
+.web-backdrop {
+  background:
+    radial-gradient(1200px 600px at 20% -10%, #f6e6cf, transparent),
+    radial-gradient(1000px 500px at 110% 110%, #e9d4b4, transparent),
+    #efe2cd;
+}
+.dark .web-backdrop {
+  background:
+    radial-gradient(1200px 600px at 20% -10%, #2a2018, transparent),
+    radial-gradient(1000px 500px at 110% 110%, #1a140f, transparent),
+    #14100c;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
+/* Electron frameless drag regions */
+.drag {
+  -webkit-app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
 }
 
-::-webkit-scrollbar-track {
+/* Slim, themed scrollbar */
+*::-webkit-scrollbar {
+  width: 8px;
+}
+*::-webkit-scrollbar-track {
   background: transparent;
 }
-
-::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
+*::-webkit-scrollbar-thumb {
+  background: rgba(192, 99, 34, 0.3);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(192, 99, 34, 0.5);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+input,
+textarea,
+button {
+  font-family: inherit;
 }
-
-/* Range slider styling */
-input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  height: 6px;
-  border-radius: 3px;
-  background: #e5e7eb;
-  outline: none;
-}
-
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ef4444, #f97316);
-  cursor: pointer;
-  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
-}
-
-input[type="range"]::-moz-range-thumb {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ef4444, #f97316);
-  cursor: pointer;
-  border: none;
-  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+::selection {
+  background: rgba(217, 126, 45, 0.35);
 }
