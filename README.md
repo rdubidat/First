@@ -1,16 +1,93 @@
-# React + Vite
+# 🥋 DojoOS — Martial Arts School CRM
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A martial-arts-native CRM built to replace GoHighLevel for MACE and become a
+sellable product to UK martial arts schools. Not a generic CRM with a martial
+arts skin: **the grading engine, attendance-decay retention system, and family
+billing model are the product.**
 
-Currently, two official plugins are available:
+This repository contains the **Phase 1 MVP** as a fully working demo: the
+production data model and all the core engines, running entirely in the
+browser against a seeded MACE-scale dataset (localStorage persistence, no
+backend required to evaluate it).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Run it
 
-## React Compiler
+```bash
+npm install
+npm run dev      # open the printed URL
+npm run build    # production build
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The app seeds itself with a realistic dataset on first load (24 families,
+~30 students, 12 weeks of attendance history with deliberately decaying
+students, payment failures, open leads). Reset it any time from **Settings →
+Reset demo data**.
 
-## Expanding the ESLint configuration
+## What's implemented (PRD §3, Phase 1)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+| Module | Where | Notes |
+|---|---|---|
+| **Member management** | Members | Family accounts (one payer, many students), statuses, medical notes, photo consent, GDPR export + right-to-erasure |
+| **Attendance** | Kiosk, Classes | Full-screen tap-name kiosk, instructor register view, history feeding the retention engine |
+| **Grading engine** | Grading | Curriculum per programme, eligibility = min classes + min time at grade, grading events with bookings/payment/results, auto grade update + certificate on pass |
+| **Billing** | Billing | Plans, family discounts (% off 2nd+ student), freeze with holding fee, pro-rata, failed-payment dunning (retry day 3/5/7 + SMS + task), MRR dashboard |
+| **Retention engine** | Retention | Attendance-decay scoring (consecutive missed weeks, trend, grading stall, payment friction), at-risk board, scan fires parent nudge + instructor task |
+| **Sales pipeline** | Pipeline | Kanban lead → signed, speed-to-lead (instant SMS + email + call task), trial 24h/2h reminders, one-click convert to family + subscription |
+| **Communications** | Inbox, everywhere | Message-intent → adapter architecture (Twilio SMS / Gmail / tap-to-send `sms:`/`wa.me` links), native STOP handling, quiet-hours holds, templates, class broadcasts, usage metered at cost + transparent margin |
+
+## Architecture
+
+```
+src/
+  data/
+    seed.js          # deterministic MACE-scale demo dataset
+    store.jsx        # React store mirroring the production schema;
+                     # every mutation emits domain events
+  engine/
+    comms.js         # message intents, adapters, opt-out + quiet hours (UK A2P)
+    automations.js   # event-subscribed rules: speed-to-lead, decay nudges,
+                     # dunning, belt congrats, first-class follow-up
+    retention.js     # attendance-decay risk scoring
+    grading.js       # eligibility rules + curriculum progression
+    billing.js       # family discounts, freezes, pro-rata, MRR
+  pages/             # Dashboard, Members, Classes, Kiosk, Grading,
+                     # Retention, Pipeline, Inbox, Billing, Settings
+db/
+  schema.sql         # production multi-tenant Postgres schema (RLS, school_id
+                     # on every table, soft deletes, event log, message intents)
+```
+
+**Event-driven core:** every action (check-in, payment failed, grade awarded,
+lead created) emits an event; automations subscribe to events and produce
+message intents + tasks. In production the same rules run in a queue worker
+(Inngest / pg-cron); here they run synchronously in the store so the whole
+loop is demonstrable.
+
+**Multi-tenant from day one:** `school_id` on every table with row-level
+security — see `db/schema.sql`. The demo runs one tenant (MACE) but nothing
+assumes it.
+
+## Path to production (build vs buy, PRD §2)
+
+Build the vertical layer, rent the plumbing:
+
+- **Backend:** Postgres (Supabase/Neon) using `db/schema.sql`; the store
+  actions in `src/data/store.jsx` map 1:1 to API endpoints; the engine modules
+  are pure functions that move server-side unchanged.
+- **Payments:** Stripe (MVP, zero migration risk) → GoCardless Direct Debit
+  in Phase 2 (~1% capped 20p, lower involuntary churn). Never touch card data.
+- **SMS:** Twilio direct — one local number per school, UK A2P sender
+  registration, inbound webhook → `messages` + native STOP handling.
+- **Email:** Gmail OAuth per school (send-as + inbound sync); Resend when
+  broadcast volume exceeds Gmail limits.
+- **WhatsApp:** tap-to-send (`wa.me`) now; Cloud API adapter slots into the
+  intent layer in Phase 2 with no rewrite — start Meta business verification
+  early.
+- **Jobs:** scheduled sends (`message_intents.scheduled_for`), dunning
+  retries, and the nightly decay scan move to a queue worker.
+
+## Explicitly not in MVP (PRD §3.8)
+
+WhatsApp API, VoIP, webchat, social scheduler, blog, parent app, pro shop,
+payroll — Phase 2/3. The data model already leaves room for them (capacity
+on classes, `whatsapp` channel enum, portal `auth_id` on families).
