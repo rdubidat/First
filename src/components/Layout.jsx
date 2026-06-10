@@ -11,6 +11,12 @@ const NAV = [
   { to: '/pipeline', label: 'Pipeline', icon: '🧲' },
   { to: '/inbox', label: 'Inbox', icon: '💬' },
   { to: '/billing', label: 'Billing', icon: '💳' },
+  { section: 'Marketing' },
+  { to: '/content', label: 'Content', icon: '📣' },
+  { to: '/campaigns', label: 'Campaigns', icon: '✉️' },
+  { to: '/growth', label: 'Growth', icon: '⭐' },
+  { to: '/receptionist', label: 'Receptionist', icon: '🤖' },
+  { section: '' },
   { to: '/settings', label: 'Settings', icon: '⚙️' },
 ]
 
@@ -26,7 +32,12 @@ export default function Layout() {
           <div className="text-xs text-slate-400 mt-0.5 truncate">{db.school.name}</div>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {NAV.map((item) => (
+          {NAV.map((item, i) =>
+            item.section !== undefined ? (
+              <div key={`sec-${i}`} className="pt-3 pb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                {item.section}
+              </div>
+            ) : (
             <NavLink
               key={item.to}
               to={item.to}
@@ -44,7 +55,8 @@ export default function Layout() {
                 <span className="ml-auto bg-amber-500 text-slate-900 text-xs font-bold rounded-full px-1.5">{openTasks}</span>
               )}
             </NavLink>
-          ))}
+            )
+          )}
         </nav>
         <div className="px-3 py-4 border-t border-slate-800">
           <Link

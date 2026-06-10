@@ -38,6 +38,8 @@ export function buildSeedDb() {
       freezeFeePence: 500,
       smsCostPence: 4,
       platformMarginPct: 20,
+      googleReviewUrl: 'https://g.page/r/mace-martial-arts/review',
+      referralRewardPence: 2500,
     },
   }
 
@@ -317,6 +319,55 @@ export function buildSeedDb() {
   const events = [
     { id: uid('evt'), schoolId: school.id, type: 'payment.failed', payload: {}, at: addDays(now, -2).toISOString() },
     { id: uid('evt'), schoolId: school.id, type: 'lead.created', payload: { leadId: leads[0].id }, at: leads[0].createdAt },
+    // Pass results from the completed grading — gives the content engine
+    // recent moments to draft from on first load.
+    ...gradingEvents[1].bookings.map((b) => ({
+      id: uid('evt'),
+      schoolId: school.id,
+      type: 'grading.passed',
+      payload: { studentId: b.studentId, gradeId: enrolments.find((e) => e.studentId === b.studentId)?.gradeId },
+      at: addDays(now, -20).toISOString(),
+    })),
+  ]
+
+  // --- Phase 2: marketing layer seeds ---
+  const posts = [
+    {
+      id: uid('post'), schoolId: school.id, channels: ['facebook', 'instagram'],
+      body: `🥋 Grading day is coming! ${isoDate(addDays(now, 12))} — Junior Kickboxing Summer Grading. Eligible students have been invited. Parents: doors open 30 minutes early for good seats!\n\n#MACEMartialArts #GradingDay`,
+      status: 'scheduled', scheduledFor: addDays(now, 5).toISOString(), source: 'manual',
+      eventType: null, eventAt: null, createdAt: addDays(now, -2).toISOString(),
+    },
+    {
+      id: uid('post'), schoolId: school.id, channels: ['facebook', 'gbp'],
+      body: `Did you know we run Little Ninjas classes for 4–6 year olds every Monday and Saturday? Confidence, focus and fun — book a free trial via the link in bio. 🐉`,
+      status: 'published', scheduledFor: addDays(now, -7).toISOString(), source: 'manual',
+      eventType: null, eventAt: null, createdAt: addDays(now, -9).toISOString(),
+    },
+  ]
+
+  const campaigns = [
+    {
+      id: uid('cmp'), schoolId: school.id, name: 'May newsletter',
+      subject: 'New timetable, grading dates & member of the month 🥋',
+      body: 'Hi {name},\n\nHere is everything happening at MACE this month...',
+      segment: { programmeId: null, riskBand: null },
+      status: 'sent', sentAt: addDays(now, -20).toISOString(), recipients: 19,
+    },
+  ]
+
+  const reviews = [
+    { id: uid('rev'), schoolId: school.id, author: 'Claire D.', rating: 5, text: 'My son has come on leaps and bounds since joining. The instructors genuinely care and the grading days are brilliantly run.', date: isoDate(addDays(now, -12)), source: 'google', responded: true },
+    { id: uid('rev'), schoolId: school.id, author: 'Imran K.', rating: 5, text: 'Fantastic club. Great with the little ones and the family discount makes it affordable for both my kids.', date: isoDate(addDays(now, -28)), source: 'google', responded: false },
+    { id: uid('rev'), schoolId: school.id, author: 'Becky H.', rating: 4, text: 'Really good classes, parking can be tight on Saturdays but worth it.', date: isoDate(addDays(now, -45)), source: 'google', responded: false },
+  ]
+
+  const referrals = [
+    {
+      id: uid('ref'), schoolId: school.id, referrerFamilyId: families[1].id,
+      leadId: leads[3].id, // Raj Sharma came via referral
+      status: 'pending', rewardPence: 2500, createdAt: leads[3].createdAt,
+    },
   ]
 
   const templates = [
@@ -328,7 +379,7 @@ export function buildSeedDb() {
   ]
 
   return {
-    version: 1,
+    version: 2,
     seededAt: now.toISOString(),
     school,
     programmes,
@@ -347,5 +398,9 @@ export function buildSeedDb() {
     tasks,
     events,
     templates,
+    posts,
+    campaigns,
+    reviews,
+    referrals,
   }
 }

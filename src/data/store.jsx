@@ -6,7 +6,9 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { buildSeedDb } from './seed'
 import { applyAutomations, runDecayScan } from '../engine/automations'
-import { resolveIntent, isOptOutMessage } from '../engine/comms'
+import { resolveIntent, isOptOutMessage, renderTemplate } from '../engine/comms'
+import { generateDrafts } from '../engine/content'
+import { campaignAudience } from '../engine/campaigns'
 import { uid, isoDate } from '../lib/utils'
 
 const STORAGE_KEY = 'dojoos.db.v1'
@@ -17,12 +19,27 @@ function loadDb() {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const db = JSON.parse(raw)
-      if (db.version === 1) return db
+      if (db.version === 2) return db
+      if (db.version === 1) return migrateV1toV2(db)
     }
   } catch {
     // corrupted store — fall through to reseed
   }
   return buildSeedDb()
+}
+
+// v2 adds the Phase 2 marketing collections + settings; existing data keeps.
+function migrateV1toV2(db) {
+  const fresh = buildSeedDb()
+  return {
+    ...db,
+    version: 2,
+    school: { ...db.school, settings: { ...fresh.school.settings, ...db.school.settings } },
+    posts: fresh.posts,
+    campaigns: fresh.campaigns,
+    reviews: fresh.reviews,
+    referrals: fresh.referrals,
+  }
 }
 
 export function StoreProvider({ children }) {
@@ -119,6 +136,7 @@ export function StoreProvider({ children }) {
           db.messages = db.messages.filter((m) => m.familyId !== familyId)
           db.tasks = db.tasks.filter((t) => !(t.relatedType === 'family' && t.relatedId === familyId) && !(t.relatedType === 'student' && studentIds.includes(t.relatedId)))
           db.gradingEvents.forEach((g) => { g.bookings = g.bookings.filter((b) => !studentIds.includes(b.studentId)) })
+          db.referrals = db.referrals.filter((r) => r.referrerFamilyId !== familyId)
           db.families = db.families.filter((f) => f.id !== familyId)
         })
       },
@@ -314,6 +332,79 @@ export function StoreProvider({ children }) {
       runRetentionScan() {
         mutate((db, emit) => {
           runDecayScan(db, emit)
+        })
+      },
+
+      // --- Phase 2: content engine / campaigns / reviews / referrals ---
+      savePost(post) {
+        mutate((db) => {
+          db.posts.push({
+            id: uid('post'), schoolId: db.school.id, channels: ['facebook', 'instagram'],
+            status: 'draft', scheduledFor: null, source: 'manual',
+            eventType: null, eventAt: null, createdAt: new Date().toISOString(),
+            ...post,
+          })
+        })
+      },
+      updatePost(postId, patch) {
+        mutate((db) => Object.assign(db.posts.find((p) => p.id === postId) || {}, patch))
+      },
+      deletePost(postId) {
+        mutate((db) => { db.posts = db.posts.filter((p) => p.id !== postId) })
+      },
+      generateContentDrafts() {
+        mutate((db) => { db.posts.push(...generateDrafts(db)) })
+      },
+      sendCampaign({ name, subject, body, segment }) {
+        mutate((db) => {
+          const audience = campaignAudience(db, segment)
+          for (const family of audience) {
+            db.messages.push(resolveIntent(db, {
+              familyId: family.id, channel: 'email', subject,
+              body: renderTemplate(body, { name: family.payerName.split(' ')[0], school: db.school.name }),
+              automation: 'campaign',
+            }))
+          }
+          db.campaigns.push({
+            id: uid('cmp'), schoolId: db.school.id, name, subject, body, segment,
+            status: 'sent', sentAt: new Date().toISOString(), recipients: audience.length,
+          })
+        })
+      },
+      markReviewResponded(reviewId) {
+        mutate((db) => Object.assign(db.reviews.find((r) => r.id === reviewId) || {}, { responded: true }))
+      },
+      addReferral({ referrerFamilyId, name, phone, email }) {
+        mutate((db, emit) => {
+          const lead = {
+            id: uid('lead'), schoolId: db.school.id, name, studentName: name, age: null,
+            phone, email, programmeId: null, source: 'referral', stage: 'lead',
+            optOutSms: false, notes: '', createdAt: new Date().toISOString(), trialAt: null,
+            referrerFamilyId,
+          }
+          db.leads.push(lead)
+          db.referrals.push({
+            id: uid('ref'), schoolId: db.school.id, referrerFamilyId, leadId: lead.id,
+            status: 'pending', rewardPence: db.school.settings.referralRewardPence,
+            createdAt: lead.createdAt,
+          })
+          emit('lead.created', { leadId: lead.id })
+        })
+      },
+      rewardReferral(referralId) {
+        mutate((db) => {
+          const ref = db.referrals.find((r) => r.id === referralId)
+          if (!ref) return
+          ref.status = 'rewarded'
+          ref.rewardedAt = new Date().toISOString()
+        })
+      },
+      addTask({ title, relatedType = null, relatedId = null }) {
+        mutate((db) => {
+          db.tasks.push({
+            id: uid('task'), schoolId: db.school.id, title, due: null, relatedType, relatedId,
+            status: 'open', createdBy: 'automation', createdAt: new Date().toISOString(),
+          })
         })
       },
 

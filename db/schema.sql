@@ -234,6 +234,7 @@ create table leads (
   trial_at     timestamptz,
   notes        text,
   converted_family_id uuid references families(id),
+  referrer_family_id  uuid references families(id),   -- referral tracking (Phase 2)
   created_at   timestamptz not null default now(),
   deleted_at   timestamptz
 );
@@ -353,6 +354,68 @@ create table tasks (
 create index on tasks (school_id, status, due_at);
 
 -- ---------------------------------------------------------------------------
+-- Phase 2: marketing layer
+-- ---------------------------------------------------------------------------
+
+-- Social posts: drafted by the content engine from CRM events, published via
+-- direct Meta Graph / GBP APIs.
+create table social_posts (
+  id            uuid primary key default gen_random_uuid(),
+  school_id     uuid not null references schools(id),
+  channels      text[] not null default '{facebook}',
+  body          text not null,
+  status        text not null default 'draft' check (status in ('draft','scheduled','published','failed')),
+  scheduled_for timestamptz,
+  source        text not null default 'manual' check (source in ('manual','content-engine')),
+  event_id      uuid references events(id),     -- CRM moment that produced it
+  created_at    timestamptz not null default now(),
+  deleted_at    timestamptz
+);
+
+create index on social_posts (school_id, status, scheduled_for);
+
+-- Email campaigns with segmentation; recipients require marketing consent.
+create table campaigns (
+  id         uuid primary key default gen_random_uuid(),
+  school_id  uuid not null references schools(id),
+  name       text not null,
+  subject    text not null,
+  body       text not null,
+  segment    jsonb not null default '{}'::jsonb,  -- {programme_id, risk_band, grade_band}
+  status     text not null default 'draft' check (status in ('draft','sending','sent')),
+  recipients int,
+  sent_at    timestamptz,
+  created_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+
+-- Review engine: requests fire post-grading; monitoring pulls from GBP API.
+create table reviews (
+  id          uuid primary key default gen_random_uuid(),
+  school_id   uuid not null references schools(id),
+  source      text not null default 'google',
+  external_id text,
+  author      text,
+  rating      int check (rating between 1 and 5),
+  body        text,
+  reviewed_at date,
+  responded   boolean not null default false,
+  created_at  timestamptz not null default now()
+);
+
+-- Referral tracking with rewards.
+create table referrals (
+  id                 uuid primary key default gen_random_uuid(),
+  school_id          uuid not null references schools(id),
+  referrer_family_id uuid not null references families(id),
+  lead_id            uuid not null references leads(id),
+  status             text not null default 'pending' check (status in ('pending','converted','rewarded')),
+  reward_pence       int  not null default 0,
+  rewarded_at        timestamptz,
+  created_at         timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------------------
 -- Row-level security: every tenant table is scoped to the caller's school.
 -- app.current_school_id is set per-connection by the API layer (or derived
 -- from the JWT under Supabase: auth.jwt() ->> 'school_id').
@@ -365,7 +428,8 @@ begin
     'staff_users','families','students','programmes','grades','enrolments',
     'classes','attendance','plans','subscriptions','payments','leads',
     'grading_events','grading_bookings','message_intents','messages',
-    'message_templates','events','tasks'
+    'message_templates','events','tasks',
+    'social_posts','campaigns','reviews','referrals'
   ] loop
     execute format('alter table %I enable row level security', t);
     execute format(

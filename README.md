@@ -35,6 +35,16 @@ Reset demo data**.
 | **Sales pipeline** | Pipeline | Kanban lead → signed, speed-to-lead (instant SMS + email + call task), trial 24h/2h reminders, one-click convert to family + subscription |
 | **Communications** | Inbox, everywhere | Message-intent → adapter architecture (Twilio SMS / Gmail / tap-to-send `sms:`/`wa.me` links), native STOP handling, quiet-hours holds, templates, class broadcasts, usage metered at cost + transparent margin |
 
+## Phase 2 marketing layer (PRD §4)
+
+| Module | Where | Notes |
+|---|---|---|
+| **Content engine** | Content | CRM events (grading passes, new joins, first classes) auto-draft social posts in the school's voice — photo-consent aware; drafts → schedule → publish via direct Meta Graph / GBP APIs. Demo drafts from templates; production swaps in the Anthropic API behind the same contract |
+| **Review engine** | Growth | Google review request fires automatically on every grading pass; review monitoring + reply tracking |
+| **Email campaigns** | Campaigns | Segmentation by programme and attendance band (powered by the retention engine); marketing consent is a hard filter; Gmail send caps surfaced, Resend routing when exceeded |
+| **Referrals** | Growth | Referred leads tracked end-to-end; conversion flips automatically when the lead signs, reward task created |
+| **AI receptionist** | Receptionist | Out-of-hours FAQ + free-trial booking (creates a lead → speed-to-lead fires); escalates unanswerable questions to a team task. Rule-based demo brain, Anthropic API in production behind the same `respond()` contract |
+
 ## Architecture
 
 ```
@@ -46,12 +56,16 @@ src/
   engine/
     comms.js         # message intents, adapters, opt-out + quiet hours (UK A2P)
     automations.js   # event-subscribed rules: speed-to-lead, decay nudges,
-                     # dunning, belt congrats, first-class follow-up
+                     # dunning, belt congrats + review request + auto post,
+                     # first-class follow-up, referral conversion
     retention.js     # attendance-decay risk scoring
     grading.js       # eligibility rules + curriculum progression
     billing.js       # family discounts, freezes, pro-rata, MRR
+    content.js       # content engine drafts + AI receptionist brain
+    campaigns.js     # consent-gated campaign segmentation
   pages/             # Dashboard, Members, Classes, Kiosk, Grading,
-                     # Retention, Pipeline, Inbox, Billing, Settings
+                     # Retention, Pipeline, Inbox, Billing, Content,
+                     # Campaigns, Growth, Receptionist, Settings
 db/
   schema.sql         # production multi-tenant Postgres schema (RLS, school_id
                      # on every table, soft deletes, event log, message intents)
@@ -86,8 +100,10 @@ Build the vertical layer, rent the plumbing:
 - **Jobs:** scheduled sends (`message_intents.scheduled_for`), dunning
   retries, and the nightly decay scan move to a queue worker.
 
-## Explicitly not in MVP (PRD §3.8)
+## Not yet built (PRD §4–5 remainder)
 
-WhatsApp API, VoIP, webchat, social scheduler, blog, parent app, pro shop,
-payroll — Phase 2/3. The data model already leaves room for them (capacity
-on classes, `whatsapp` channel enum, portal `auth_id` on families).
+WhatsApp Cloud API (start Meta business verification early), blog/SEO engine,
+VoIP + missed-call text-back, parent portal PWA, class capacity caps +
+waitlists, pro shop/inventory, instructor payroll, safeguarding suite,
+multi-tenant onboarding flow. The data model already leaves room for them
+(capacity on classes, `whatsapp` channel enum, portal `auth_id` on families).

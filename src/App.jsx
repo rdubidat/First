@@ -13,6 +13,10 @@ import Inbox from './pages/Inbox'
 import Billing from './pages/Billing'
 import Settings from './pages/Settings'
 import Kiosk from './pages/Kiosk'
+import Content from './pages/Content'
+import Campaigns from './pages/Campaigns'
+import Growth from './pages/Growth'
+import Receptionist from './pages/Receptionist'
 
 export default function App() {
   return (
@@ -31,6 +35,10 @@ export default function App() {
             <Route path="/pipeline" element={<Pipeline />} />
             <Route path="/inbox" element={<Inbox />} />
             <Route path="/billing" element={<Billing />} />
+            <Route path="/content" element={<Content />} />
+            <Route path="/campaigns" element={<Campaigns />} />
+            <Route path="/growth" element={<Growth />} />
+            <Route path="/receptionist" element={<Receptionist />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
         </Routes>

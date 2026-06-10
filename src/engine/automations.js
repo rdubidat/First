@@ -6,6 +6,7 @@
 import { uid, fullName, addDays } from '../lib/utils'
 import { resolveIntent, renderTemplate } from './comms'
 import { consecutiveMissedWeeks } from './retention'
+import { draftPostForEvent } from './content'
 
 function task(db, { title, due = null, relatedType = null, relatedId = null }) {
   return {
@@ -40,6 +41,8 @@ const T = {
     'Huge congratulations to {studentName} on earning their {grade} at {school} today! 🥋 Their certificate is ready to collect at the front desk.',
   firstClassFollowUp:
     'Hi {name}, great to have {studentName} in class today for the first time! Any questions at all, just reply here. Welcome to the {school} family!',
+  reviewRequest:
+    'Hi {name}, what a day for {studentName}! 🥋 If you have 30 seconds, a Google review means the world to a small club like ours: {reviewLink}',
 }
 
 function ctxFor(db, { family, lead, student, extra = {} }) {
@@ -131,8 +134,32 @@ const rules = {
     const family = db.families.find((f) => f.id === student?.familyId)
     const grade = db.grades.find((g) => g.id === event.payload.gradeId)
     if (!student || !family || !grade) return
-    const ctx = ctxFor(db, { family, student, extra: { grade: grade.name } })
+    const ctx = ctxFor(db, { family, student, extra: { grade: grade.name, reviewLink: db.school.settings.googleReviewUrl } })
     send(db, { familyId: family.id, channel: 'sms', body: renderTemplate(T.beltCongrats, ctx), automation: 'belt-congrats' })
+    // Phase 2 review engine: ask while the pride is fresh.
+    if (db.school.settings.googleReviewUrl) {
+      send(db, { familyId: family.id, channel: 'sms', body: renderTemplate(T.reviewRequest, ctx), automation: 'review-request' })
+    }
+    // Phase 2 content engine: auto-draft a celebration post (consent-aware).
+    if (db.posts) {
+      const draft = draftPostForEvent(db, { type: event.type, payload: event.payload }, db.posts.length)
+      if (draft) db.posts.push(draft)
+    }
+  },
+
+  'lead.signed'(db, event) {
+    // Referral tracking: when a referred lead signs, queue the reward.
+    const referral = db.referrals?.find((r) => r.leadId === event.payload.leadId && r.status === 'pending')
+    if (!referral) return
+    referral.status = 'converted'
+    const referrer = db.families.find((f) => f.id === referral.referrerFamilyId)
+    db.tasks.push(
+      task(db, {
+        title: `Referral converted — apply £${(referral.rewardPence / 100).toFixed(2)} credit to ${referrer?.payerName || 'referrer'}`,
+        relatedType: 'family',
+        relatedId: referral.referrerFamilyId,
+      })
+    )
   },
 
   'student.first_class'(db, event) {
