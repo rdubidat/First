@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route } from 'react-router-dom'
-import { StoreProvider } from './data/store'
+import { StoreProvider, useStore } from './data/store'
+import { Login, Onboarding, Splash } from './pages/Auth'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Members from './pages/Members'
@@ -18,9 +19,22 @@ import Campaigns from './pages/Campaigns'
 import Growth from './pages/Growth'
 import Receptionist from './pages/Receptionist'
 
+// In live mode, gate the app behind auth + school onboarding.
+function Gate({ children }) {
+  const { mode, live, db } = useStore()
+  if (mode === 'demo') return children
+  if (live.stage === 'checking') return <Splash text="Checking session…" />
+  if (live.stage === 'signed_out') return <Login />
+  if (live.stage === 'no_school') return <Onboarding />
+  if (live.stage === 'error') return <Splash error={live.loadError} onSignOut={live.signOut} />
+  if (!db) return <Splash />
+  return children
+}
+
 export default function App() {
   return (
     <StoreProvider>
+      <Gate>
       <HashRouter>
         <Routes>
           <Route path="/kiosk" element={<Kiosk />} />
@@ -43,6 +57,7 @@ export default function App() {
           </Route>
         </Routes>
       </HashRouter>
+      </Gate>
     </StoreProvider>
   )
 }

@@ -20,8 +20,15 @@ const NAV = [
   { to: '/settings', label: 'Settings', icon: '⚙️' },
 ]
 
+const SYNC_LABELS = {
+  idle: ['●', 'text-slate-500', 'Connected'],
+  syncing: ['↻', 'text-amber-400', 'Saving…'],
+  saved: ['●', 'text-emerald-400', 'All changes saved'],
+  error: ['⚠', 'text-red-400', 'Sync error'],
+}
+
 export default function Layout() {
-  const { db } = useStore()
+  const { db, mode, live } = useStore()
   const openTasks = db.tasks.filter((t) => t.status === 'open').length
 
   return (
@@ -58,13 +65,23 @@ export default function Layout() {
             )
           )}
         </nav>
-        <div className="px-3 py-4 border-t border-slate-800">
+        <div className="px-3 py-4 border-t border-slate-800 space-y-2">
           <Link
             to="/kiosk"
             className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2.5 text-sm font-semibold"
           >
             ✅ Launch Check-in Kiosk
           </Link>
+          {mode === 'live' ? (
+            <div className="flex items-center justify-between px-1 text-xs">
+              <span className={SYNC_LABELS[live.syncStatus][1]} title={live.syncError || ''}>
+                {SYNC_LABELS[live.syncStatus][0]} {SYNC_LABELS[live.syncStatus][2]}
+              </span>
+              <button onClick={live.signOut} className="text-slate-500 hover:text-white">Sign out</button>
+            </div>
+          ) : (
+            <div className="px-1 text-xs text-slate-500">Demo mode · data stays in this browser</div>
+          )}
         </div>
       </aside>
       <main className="flex-1 ml-56 p-6 max-w-[1400px]">

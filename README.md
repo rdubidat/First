@@ -5,10 +5,14 @@ sellable product to UK martial arts schools. Not a generic CRM with a martial
 arts skin: **the grading engine, attendance-decay retention system, and family
 billing model are the product.**
 
-This repository contains the **Phase 1 MVP** as a fully working demo: the
-production data model and all the core engines, running entirely in the
-browser against a seeded MACE-scale dataset (localStorage persistence, no
-backend required to evaluate it).
+The app runs in two modes:
+
+- **Demo mode** (default, zero setup): the production data model and all the
+  core engines running entirely in the browser against a seeded MACE-scale
+  dataset (localStorage persistence).
+- **Live mode**: connect a Supabase project (see [SETUP.md](SETUP.md)) and
+  the app gains staff logins, a real Postgres database with row-level
+  security, and write-through sync across devices. Same UI, same engines.
 
 ## Run it
 
@@ -52,7 +56,10 @@ src/
   data/
     seed.js          # deterministic MACE-scale demo dataset
     store.jsx        # React store mirroring the production schema;
-                     # every mutation emits domain events
+                     # every mutation emits domain events. Two providers:
+                     # demo (localStorage) and live (Supabase auth + sync)
+    codec.js         # camelCase docs <-> snake_case Postgres rows
+    remote.js        # live mode: school loader + diff-based write-through
   engine/
     comms.js         # message intents, adapters, opt-out + quiet hours (UK A2P)
     automations.js   # event-subscribed rules: speed-to-lead, decay nudges,
@@ -67,8 +74,11 @@ src/
                      # Retention, Pipeline, Inbox, Billing, Content,
                      # Campaigns, Growth, Receptionist, Settings
 db/
-  schema.sql         # production multi-tenant Postgres schema (RLS, school_id
-                     # on every table, soft deletes, event log, message intents)
+  schema.sql         # reference design: full relational schema with FKs,
+                     # message intents, soft deletes (Phase 3 target)
+supabase/
+  migrations/001_init.sql  # operational live-mode schema the app syncs
+                           # against (RLS per school, sync-resilient)
 ```
 
 **Event-driven core:** every action (check-in, payment failed, grade awarded,

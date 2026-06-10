@@ -7,7 +7,7 @@ import { Card, Button, Badge, Field, inputCls } from '../components/ui'
 import { gbp } from '../lib/utils'
 
 export default function Settings() {
-  const { db, actions } = useStore()
+  const { db, actions, mode, live } = useStore()
   const s = db.school.settings
   const [confirmReset, setConfirmReset] = useState(false)
 
@@ -108,19 +108,47 @@ export default function Settings() {
             </div>
           </Card>
 
-          <Card title="Demo data">
-            <p className="text-xs text-slate-500 mb-3">
-              This demo runs entirely in your browser (localStorage) with the production data model. Reset regenerates the seeded MACE dataset.
-            </p>
-            {confirmReset ? (
-              <div className="flex gap-2">
-                <Button variant="danger" onClick={() => { actions.resetDemo(); setConfirmReset(false) }}>Yes, reset everything</Button>
-                <Button variant="secondary" onClick={() => setConfirmReset(false)}>Cancel</Button>
+          {mode === 'live' ? (
+            <Card title="Account & data">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-600">Mode</span>
+                  <Badge color="green">live · Supabase</Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-600">Signed in as</span>
+                  <span className="text-slate-700 text-xs">{live.session?.user?.email}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-600">Role</span>
+                  <Badge color="blue">{live.staff?.role}</Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-600">Sync</span>
+                  <Badge color={live.syncStatus === 'error' ? 'red' : 'green'}>
+                    {live.syncStatus === 'error' ? `error: ${live.syncError}` : live.syncStatus}
+                  </Badge>
+                </div>
               </div>
-            ) : (
-              <Button variant="secondary" onClick={() => setConfirmReset(true)}>Reset demo data</Button>
-            )}
-          </Card>
+              <div className="mt-3">
+                <Button variant="secondary" onClick={live.signOut}>Sign out</Button>
+              </div>
+            </Card>
+          ) : (
+            <Card title="Demo data">
+              <p className="text-xs text-slate-500 mb-3">
+                Demo mode: data lives in this browser (localStorage) on the production data model. Connect Supabase (see SETUP.md) to turn on logins and a real database. Reset regenerates the seeded MACE dataset.
+              </p>
+              {confirmReset ? (
+                <div className="flex gap-2">
+                  <Button variant="danger" onClick={() => { actions.resetDemo(); setConfirmReset(false) }}>Yes, reset everything</Button>
+                  <Button variant="secondary" onClick={() => setConfirmReset(false)}>Cancel</Button>
+                </div>
+              ) : (
+                <Button variant="secondary" onClick={() => setConfirmReset(true)}>Reset demo data</Button>
+              )}
+            </Card>
+          )}
         </div>
       </div>
     </div>
