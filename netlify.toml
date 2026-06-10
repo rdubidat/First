@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Hash routing means no server-side rewrites are needed, but keep deep links
+# working if the router ever moves to history mode.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
